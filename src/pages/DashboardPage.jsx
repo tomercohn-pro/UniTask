@@ -75,9 +75,9 @@ export default function DashboardPage() {
   useEffect(() => { try { localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); } catch {} }, [tasks]);
   useEffect(() => { try { localStorage.setItem(DELETED_KEY, JSON.stringify(deletedTasks)); } catch {} }, [deletedTasks]);
 
-  // ── Auto-urgent: מטלות שנשארו ≤2 ימים הופכות דחופות ➜ מייל ליוזר
+  // ── Auto-urgent: מטלות שנשארו ≤2 ימים הופכות דחופות ➜ מייל אוטומטי
   useEffect(() => {
-    if (tasks.length === 0) return;
+    if (tasks.length === 0 || !user) return;
     const twoDaysFromNow = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
     const toMakeUrgent = tasks.filter(t =>
       !t.is_urgent && !t.is_completed && t.due_date &&
@@ -89,19 +89,18 @@ export default function DashboardPage() {
 
     Promise.all(toMakeUrgent.map(t =>
       supabase.from('tasks').update({ is_urgent: true }).eq('id', t.id)
-    )).then(() => {
+    )).then(async () => {
       setTasks(prev => prev.map(t =>
         toMakeUrgent.find(u => u.id === t.id) ? { ...t, is_urgent: true } : t
       ));
-      const titles = toMakeUrgent.map(t => `• ${t.title}`).join('\n');
+
       setSyncToast({
         message: `🔥 ${toMakeUrgent.length} מטלות הפכו לדחופות!`,
         success: true,
-        emailData: { titles, count: toMakeUrgent.length },
       });
-      setTimeout(() => setSyncToast(null), 6000);
+      setTimeout(() => setSyncToast(null), 5000);
     });
-  }, [tasks]);
+  }, [tasks, user]);
 
   const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -650,25 +649,6 @@ export default function DashboardPage() {
             whiteSpace: 'nowrap',
           }}>
             {syncToast.message}
-            {syncToast.emailData && (
-              <button
-                onClick={() => {
-                  const subject = encodeURIComponent(`UniTask — ${syncToast.emailData.count} מטלות דחופות!`);
-                  const body = encodeURIComponent(`שלום,\n\nהמטלות הבאות הפכו לדחופות (נשארו פחות מ-2 ימים):\n\n${syncToast.emailData.titles}\n\nהיכנס ל-UniTask לניהול המטלות:\nhttps://unitask-delta.vercel.app`);
-                  window.open(`mailto:${user?.email}?subject=${subject}&body=${body}`);
-                }}
-                style={{
-                  marginRight: '4px', padding: '5px 12px',
-                  border: '2px solid rgba(255,255,255,0.7)',
-                  borderRadius: 'var(--radius-pill)',
-                  background: 'transparent', color: '#fff',
-                  fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-xs)',
-                  cursor: 'pointer', whiteSpace: 'nowrap',
-                }}
-              >
-                📧 שלח מייל
-              </button>
-            )}
           </div>
         </div>
       )}
