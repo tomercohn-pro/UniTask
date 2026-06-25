@@ -55,6 +55,9 @@ export default function DashboardPage() {
   const [syncStatus, setSyncStatus] = useState('');
   const [syncToast, setSyncToast] = useState(null); // { message, success }
   const [showAddForm, setShowAddForm] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const autoUrgentProcessed = useRef(new Set());
 
   const fetchTasks = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -71,6 +74,34 @@ export default function DashboardPage() {
   }, []);
   useEffect(() => { try { localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); } catch {} }, [tasks]);
   useEffect(() => { try { localStorage.setItem(DELETED_KEY, JSON.stringify(deletedTasks)); } catch {} }, [deletedTasks]);
+
+  // ── Auto-urgent: מטלות שנשארו ≤2 ימים הופכות דחופות ➜ מייל ליוזר
+  useEffect(() => {
+    if (tasks.length === 0) return;
+    const twoDaysFromNow = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+    const toMakeUrgent = tasks.filter(t =>
+      !t.is_urgent && !t.is_completed && t.due_date &&
+      new Date(t.due_date) <= twoDaysFromNow &&
+      !autoUrgentProcessed.current.has(t.id)
+    );
+    if (toMakeUrgent.length === 0) return;
+    toMakeUrgent.forEach(t => autoUrgentProcessed.current.add(t.id));
+
+    Promise.all(toMakeUrgent.map(t =>
+      supabase.from('tasks').update({ is_urgent: true }).eq('id', t.id)
+    )).then(() => {
+      setTasks(prev => prev.map(t =>
+        toMakeUrgent.find(u => u.id === t.id) ? { ...t, is_urgent: true } : t
+      ));
+      const titles = toMakeUrgent.map(t => `• ${t.title}`).join('\n');
+      setSyncToast({
+        message: `🔥 ${toMakeUrgent.length} מטלות הפכו לדחופות!`,
+        success: true,
+        emailData: { titles, count: toMakeUrgent.length },
+      });
+      setTimeout(() => setSyncToast(null), 6000);
+    });
+  }, [tasks]);
 
   const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -196,6 +227,32 @@ export default function DashboardPage() {
     const { id: _old, ...rest } = task;
     const { data, error } = await supabase.from('tasks').insert([rest]).select();
     if (!error) { setDeletedTasks(deletedTasks.filter(t => t.id !== id)); setTasks([data[0], ...tasks]); }
+  }
+
+  function toggleSelectTask(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    const ids = [...selectedIds];
+    const toDelete = tasks.filter(t => ids.includes(t.id));
+    await Promise.all(ids.map(id => supabase.from('tasks').delete().eq('id', id)));
+    setTasks(prev => prev.filter(t => !ids.includes(t.id)));
+    setDeletedTasks(prev => [...toDelete, ...prev]);
+    setSelectedIds(new Set());
+    setSelectMode(false);
+  }
+
+  async function handleBulkUrgent() {
+    const ids = [...selectedIds];
+    await Promise.all(ids.map(id => supabase.from('tasks').update({ is_urgent: true }).eq('id', id)));
+    setTasks(prev => prev.map(t => ids.includes(t.id) ? { ...t, is_urgent: true } : t));
+    setSelectedIds(new Set());
+    setSelectMode(false);
   }
 
   const closeInfo = () => {
@@ -417,20 +474,35 @@ export default function DashboardPage() {
       <div className="dash-section" style={{ padding: '16px 20px 0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: 'var(--text-h2)', fontWeight: 'var(--weight-bold)', color: 'var(--color-text-main)' }}>המטלות שלי</h2>
-          <button
-            onClick={() => setShowAddForm(p => !p)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '5px',
-              padding: '7px 12px', border: 'none',
-              borderRadius: 'var(--radius-pill)',
-              background: 'var(--color-primary-light)',
-              color: 'var(--color-primary)',
-              fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-caption)',
-              cursor: 'pointer',
-            }}
-          >
-            <Plus size={15} /> הוסף
-          </button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              onClick={() => { setSelectMode(p => !p); setSelectedIds(new Set()); }}
+              style={{
+                padding: '7px 12px', border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-pill)',
+                background: selectMode ? 'var(--color-primary)' : 'var(--color-surface)',
+                color: selectMode ? '#fff' : 'var(--color-text-muted)',
+                fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-caption)',
+                cursor: 'pointer',
+              }}
+            >
+              {selectMode ? 'ביטול' : 'בחר'}
+            </button>
+            <button
+              onClick={() => setShowAddForm(p => !p)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '5px',
+                padding: '7px 12px', border: 'none',
+                borderRadius: 'var(--radius-pill)',
+                background: 'var(--color-primary-light)',
+                color: 'var(--color-primary)',
+                fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-caption)',
+                cursor: 'pointer',
+              }}
+            >
+              <Plus size={15} /> הוסף
+            </button>
+          </div>
         </div>
 
         {/* Add Task Form */}
@@ -496,6 +568,9 @@ export default function DashboardPage() {
               onSave={() => handleSaveTask(task.id)}
               onCancel={() => setEditingTaskId(null)}
               onDelete={() => handleDeleteTask(task.id)}
+              selectMode={selectMode}
+              selected={selectedIds.has(task.id)}
+              onSelect={() => toggleSelectTask(task.id)}
             />
           ))
         )}
@@ -553,7 +628,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Sync Toast ── */}
+      {/* ── Sync / Auto-urgent Toast ── */}
       {syncToast && (
         <div style={{
           position: 'fixed',
@@ -561,21 +636,91 @@ export default function DashboardPage() {
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 2000,
-          animation: 'toastSlideUp 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards',
-          pointerEvents: 'none',
+          animation: 'toastSlideUp 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards',
         }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: '10px',
-            padding: '14px 22px',
+            padding: '14px 20px',
             borderRadius: 'var(--radius-pill)',
             background: syncToast.success ? 'var(--color-success)' : 'var(--color-error)',
             color: '#fff',
             fontWeight: 'var(--weight-semibold)',
             fontSize: 'var(--text-body)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
             whiteSpace: 'nowrap',
           }}>
-            {syncToast.success ? '✓' : '✕'} {syncToast.message}
+            {syncToast.message}
+            {syncToast.emailData && (
+              <button
+                onClick={() => {
+                  const subject = encodeURIComponent(`UniTask — ${syncToast.emailData.count} מטלות דחופות!`);
+                  const body = encodeURIComponent(`שלום,\n\nהמטלות הבאות הפכו לדחופות (נשארו פחות מ-2 ימים):\n\n${syncToast.emailData.titles}\n\nהיכנס ל-UniTask לניהול המטלות:\nhttps://unitask-delta.vercel.app`);
+                  window.open(`mailto:${user?.email}?subject=${subject}&body=${body}`);
+                }}
+                style={{
+                  marginRight: '4px', padding: '5px 12px',
+                  border: '2px solid rgba(255,255,255,0.7)',
+                  borderRadius: 'var(--radius-pill)',
+                  background: 'transparent', color: '#fff',
+                  fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-xs)',
+                  cursor: 'pointer', whiteSpace: 'nowrap',
+                }}
+              >
+                📧 שלח מייל
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Bulk Action Bar ── */}
+      {selectMode && selectedIds.size > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '90px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 2001,
+          animation: 'toastSlideUp 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '12px 18px',
+            borderRadius: 'var(--radius-pill)',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+            whiteSpace: 'nowrap',
+          }}>
+            <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)', fontWeight: 'var(--weight-medium)' }}>
+              {selectedIds.size} נבחרו
+            </span>
+            <button
+              onClick={handleBulkUrgent}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '5px',
+                padding: '8px 14px', border: 'none',
+                borderRadius: 'var(--radius-pill)',
+                background: '#FEF2F2', color: '#DC2626',
+                fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-caption)',
+                cursor: 'pointer',
+              }}
+            >
+              🔥 סמן דחוף
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '5px',
+                padding: '8px 14px', border: 'none',
+                borderRadius: 'var(--radius-pill)',
+                background: '#DC2626', color: '#fff',
+                fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-caption)',
+                cursor: 'pointer',
+              }}
+            >
+              🗑 מחק הכל
+            </button>
           </div>
         </div>
       )}
@@ -635,22 +780,27 @@ export default function DashboardPage() {
 
 // ── Task Card Component ──────────────────────────────────────────
 function TaskCard({ task, editing, editTitle, editDueDate, setEditTitle, setEditDueDate,
-  onToggleComplete, onToggleUrgent, onEdit, onSave, onCancel, onDelete }) {
+  onToggleComplete, onToggleUrgent, onEdit, onSave, onCancel, onDelete,
+  selectMode, selected, onSelect }) {
 
   const dateLabel = task.due_date ? formatDate(task.due_date) : null;
   const isOverdue = task.due_date && new Date(task.due_date) < new Date() && !task.is_completed;
 
   return (
-    <div style={{
-      background: 'var(--color-surface)',
-      borderRadius: 'var(--radius-card)',
-      border: '1px solid var(--color-border)',
-      boxShadow: 'var(--shadow-card)',
-      borderRight: task.is_urgent ? '3px solid #DC2626' : task.is_completed ? '3px solid var(--color-success)' : '1px solid var(--color-border)',
-      padding: '14px 16px',
-      animation: 'fadeSlideIn 0.15s ease',
-      transition: 'var(--transition-fast)',
-    }}>
+    <div
+      onClick={selectMode ? onSelect : undefined}
+      style={{
+        background: 'var(--color-surface)',
+        borderRadius: 'var(--radius-card)',
+        border: selected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+        boxShadow: selected ? '0 0 0 3px rgba(79,70,229,0.12)' : 'var(--shadow-card)',
+        borderRight: selected ? '2px solid var(--color-primary)' : task.is_urgent ? '3px solid #DC2626' : task.is_completed ? '3px solid var(--color-success)' : '1px solid var(--color-border)',
+        padding: '14px 16px',
+        animation: 'fadeSlideIn 0.15s ease',
+        transition: 'box-shadow 0.15s ease, border 0.15s ease',
+        cursor: selectMode ? 'pointer' : 'default',
+        userSelect: selectMode ? 'none' : 'auto',
+      }}>
       {editing ? (
         // ── Edit Mode ──
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -675,14 +825,25 @@ function TaskCard({ task, editing, editTitle, editDueDate, setEditTitle, setEdit
       ) : (
         // ── View Mode ──
         <>
-          {/* Row 1: checkbox + title */}
+          {/* Row 1: select checkbox (if in select mode) + complete toggle + title */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-            <button
-              onClick={onToggleComplete}
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: task.is_completed ? 'var(--color-success)' : 'var(--color-text-subtle)', flexShrink: 0, marginTop: '2px' }}
-            >
-              {task.is_completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
-            </button>
+            {selectMode ? (
+              <div style={{
+                width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0, marginTop: '2px',
+                border: selected ? 'none' : '2px solid var(--color-border)',
+                background: selected ? 'var(--color-primary)' : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {selected && <span style={{ color: '#fff', fontSize: '13px', fontWeight: 'bold' }}>✓</span>}
+              </div>
+            ) : (
+              <button
+                onClick={onToggleComplete}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: task.is_completed ? 'var(--color-success)' : 'var(--color-text-subtle)', flexShrink: 0, marginTop: '2px' }}
+              >
+                {task.is_completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+              </button>
+            )}
             <p style={{
               flex: 1, minWidth: 0,
               fontWeight: 'var(--weight-semibold)',
@@ -719,18 +880,20 @@ function TaskCard({ task, editing, editTitle, editDueDate, setEditTitle, setEdit
                 </span>
               )}
             </div>
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
-              <button onClick={onToggleUrgent} style={{ ...smallIconBtn, color: task.is_urgent ? '#DC2626' : 'var(--color-text-subtle)' }} title="דחוף">
-                <Flame size={14} />
-              </button>
-              <button onClick={onEdit} style={{ ...smallIconBtn }} title="ערוך">
-                <Edit2 size={14} />
-              </button>
-              <button onClick={onDelete} style={{ ...smallIconBtn }} title="מחק">
-                <Trash2 size={14} />
-              </button>
-            </div>
+            {/* Action Buttons — hidden in select mode */}
+            {!selectMode && (
+              <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
+                <button onClick={onToggleUrgent} style={{ ...smallIconBtn, color: task.is_urgent ? '#DC2626' : 'var(--color-text-subtle)' }} title="דחוף">
+                  <Flame size={14} />
+                </button>
+                <button onClick={onEdit} style={{ ...smallIconBtn }} title="ערוך">
+                  <Edit2 size={14} />
+                </button>
+                <button onClick={onDelete} style={{ ...smallIconBtn }} title="מחק">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}
