@@ -91,7 +91,18 @@ export default function DashboardPage() {
     await delay(1200);
     setSyncStatus('שואב מטלות...');
     await delay(1300);
-    const { courseNames, taskRows, degreeLabel } = getMockSyncData(degreeKey, 5);
+
+    // אקראי: 30% סיכוי לאין מטלות חדשות, 70% סיכוי ל-1–5 מטלות
+    const newTaskCount = Math.random() < 0.3 ? 0 : Math.floor(Math.random() * 5) + 1;
+
+    if (newTaskCount === 0) {
+      setSyncStatus('✓ אין מטלות חדשות ב-Moodle');
+      setIsSyncing(false);
+      setTimeout(() => setSyncStatus(''), 3500);
+      return;
+    }
+
+    const { courseNames, taskRows, degreeLabel } = getMockSyncData(degreeKey, newTaskCount);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
@@ -99,12 +110,15 @@ export default function DashboardPage() {
       await supabase.from('courses').insert(courseNames.map(name => ({ name, user_id: userId })));
       const { error: tasksError } = await supabase.from('tasks').insert(taskRows.map(t => ({ ...t, user_id: userId })));
       if (tasksError) { setSyncStatus('שגיאה בסנכרון.'); }
-      else { await fetchTasks(); setSyncStatus(`✓ סונכרן — ${degreeLabel}`); }
+      else {
+        await fetchTasks();
+        setSyncStatus(`✓ נוספו ${newTaskCount} מטלות חדשות`);
+      }
     } catch (e) {
       setSyncStatus('שגיאה בסנכרון.');
     } finally {
       setIsSyncing(false);
-      setTimeout(() => setSyncStatus(''), 3000);
+      setTimeout(() => setSyncStatus(''), 3500);
     }
   }
 
@@ -353,6 +367,21 @@ export default function DashboardPage() {
           }
         </button>
       </div>
+
+      {/* ── Sync Result Toast ── */}
+      {!isSyncing && syncStatus && (
+        <div className="dash-section" style={{ padding: '8px 20px 0' }}>
+          <p style={{
+            fontSize: 'var(--text-caption)',
+            color: syncStatus.startsWith('✓') ? 'var(--color-success)' : 'var(--color-error)',
+            fontWeight: 'var(--weight-medium)',
+            textAlign: 'center',
+            animation: 'fadeSlideIn 0.2s ease',
+          }}>
+            {syncStatus}
+          </p>
+        </div>
+      )}
 
       {/* ── Filter Tabs ── */}
       <div className="dash-section" style={{ padding: '16px 20px 0' }}>
