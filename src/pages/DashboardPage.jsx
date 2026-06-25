@@ -309,7 +309,7 @@ export default function DashboardPage() {
           gap: '12px', flexWrap: 'wrap',
         }}>
           <span style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-            👁 מצב תצוגה — הנתונים הם לדוגמה בלבד
+            👁 שים לב — זוהי סימולציה בלבד. כדי לנהל מטלות אמיתיות ולשמור נתונים, יש להתחבר עם Google.
           </span>
           <button
             onClick={() => {
