@@ -1,0 +1,206 @@
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* ── Core Palette ── */
+  --color-primary:        #4F46E5;
+  --color-primary-light:  #EEF2FF;
+  --color-primary-dark:   #3730A3;
+  --color-secondary:      #7C3AED;
+  --color-accent:         #F59E0B;
+
+  /* ── Backgrounds ── */
+  --color-bg:             #F7F8FC;
+  --color-surface:        #FFFFFF;
+  --color-surface-alt:    #F1F3F9;
+  --color-surface-raised: #FFFFFF;
+
+  /* ── Text ── */
+  --color-text:           #0F172A;
+  --color-text-main:      #0F172A;
+  --color-text-muted:     #64748B;
+  --color-text-subtle:    #94A3B8;
+
+  /* ── Borders ── */
+  --color-border:         #E8EAF0;
+  --color-border-strong:  #CBD5E1;
+
+  /* ── Semantic ── */
+  --color-error:          #DC2626;
+  --color-error-bg:       #FEF2F2;
+  --color-error-border:   #FECACA;
+  --color-success:        #059669;
+  --color-success-bg:     #ECFDF5;
+  --color-success-border: #A7F3D0;
+  --color-warning:        #D97706;
+  --color-warning-bg:     #FFFBEB;
+
+  /* ── Input ── */
+  --color-input-bg:       #FFFFFF;
+  --color-input-border:   #E2E8F0;
+
+  /* ── Typography ── */
+  --font-family:     'Heebo', sans-serif;
+  --text-xs:         12px;
+  --text-caption:    13px;
+  --text-body:       15px;
+  --text-h2:         18px;
+  --text-h1:         22px;
+  --text-display:    28px;
+  --weight-light:    300;
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  /* ── Spacing ── */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 20px;
+  --space-4: 32px;
+
+  /* ── Radii ── */
+  --radius-sm:     8px;
+  --radius-button: 12px;
+  --radius-card:   18px;
+  --radius-large:  24px;
+  --radius-pill:   999px;
+
+  /* ── Shadows ── */
+  --shadow-xs:       0 1px 2px rgba(15,23,42,0.05);
+  --shadow-card:     0 1px 3px rgba(15,23,42,0.06), 0 2px 8px rgba(15,23,42,0.04);
+  --shadow-elevated: 0 4px 20px rgba(15,23,42,0.10), 0 1px 4px rgba(15,23,42,0.06);
+  --shadow-nav:      0 -1px 0 rgba(15,23,42,0.06), 0 -8px 32px rgba(15,23,42,0.06);
+}
+
+/* ── Dark Mode ─────────────────────────────── */
+:root.dark {
+  --color-bg:             #0B0F1A;
+  --color-surface:        #131929;
+  --color-surface-alt:    #1A2035;
+  --color-surface-raised: #1E2640;
+  --color-text:           #F1F5F9;
+  --color-text-main:      #F1F5F9;
+  --color-text-muted:     #94A3B8;
+  --color-text-subtle:    #64748B;
+  --color-border:         #1E2D45;
+  --color-border-strong:  #2D3F5A;
+  --color-input-bg:       #131929;
+  --color-input-border:   #1E2D45;
+  --color-primary-light:  rgba(79,70,229,0.15);
+  --color-error-bg:       rgba(220,38,38,0.12);
+  --color-error-border:   rgba(220,38,38,0.3);
+  --color-success-bg:     rgba(5,150,105,0.12);
+  --color-success-border: rgba(5,150,105,0.3);
+  --shadow-card:     0 1px 3px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.2);
+  --shadow-elevated: 0 4px 24px rgba(0,0,0,0.35);
+  --shadow-nav:      0 -1px 0 rgba(255,255,255,0.05), 0 -8px 32px rgba(0,0,0,0.3);
+}
+
+body.dark {
+  background-color: var(--color-bg);
+  color: var(--color-text-main);
+}
+
+/* ── Reset ──────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text-main);
+  font-family: var(--font-family);
+  font-size: var(--text-body);
+  line-height: 1.6;
+  direction: rtl;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+input, select, textarea, button {
+  font-family: inherit;
+  direction: inherit;
+}
+
+/* ── App Shell ──────────────────────────────── */
+.app-shell {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: row-reverse; /* sidebar on right in RTL */
+  background-color: var(--color-bg);
+}
+
+.page-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 100vh;
+}
+
+/* ── Focus Ring ─────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 999px;
+}
+
+/* ── Mobile Container (Legacy — kept for scanner/courses if they still use it) ── */
+.mobile-container {
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ── Responsive Layout ───────────────────────── */
+:root { --sidebar-width: 260px; }
+
+/* Sidebar: hidden by default, shown on desktop */
+.desktop-sidebar {
+  display: none;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: var(--sidebar-width);
+}
+
+/* ── Desktop (≥768px) ── */
+@media (min-width: 768px) {
+  .desktop-sidebar {
+    display: flex;
+  }
+
+  .bottom-nav-wrapper {
+    display: none !important;
+  }
+
+  /* Dashboard sections */
+  .dash-header   { padding: 40px 40px 0 !important; }
+  .dash-section  { padding-left: 40px !important; padding-right: 40px !important; }
+
+  /* Task grid: 2 columns */
+  .task-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+}
+
+/* ── Mobile (<768px) ── */
+@media (max-width: 767px) {
+  .task-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+}
+
