@@ -57,15 +57,17 @@ export default function DashboardPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [tasksLoading, setTasksLoading] = useState(true);
   const autoUrgentProcessed = useRef(new Set());
 
   const fetchTasks = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
-    if (!userId) return;
+    if (!userId) { setTasksLoading(false); return; }
     const { data, error } = await supabase.from('tasks').select('*').eq('user_id', userId);
     if (error) console.error('שגיאה בשליפת מטלות:', error);
     else setTasks(data);
+    setTasksLoading(false);
   }, []);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
@@ -474,6 +476,25 @@ export default function DashboardPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: 'var(--text-h2)', fontWeight: 'var(--weight-bold)', color: 'var(--color-text-main)' }}>המטלות שלי</h2>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {selectMode && (
+              <button
+                onClick={() => {
+                  const allIds = new Set(filteredTasks.map(t => t.id));
+                  const allSelected = filteredTasks.every(t => selectedIds.has(t.id));
+                  setSelectedIds(allSelected ? new Set() : allIds);
+                }}
+                style={{
+                  padding: '7px 12px', border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-pill)',
+                  background: 'var(--color-surface-alt)',
+                  color: 'var(--color-text-muted)',
+                  fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-caption)',
+                  cursor: 'pointer',
+                }}
+              >
+                {filteredTasks.every(t => selectedIds.has(t.id)) ? 'בטל הכל' : 'בחר הכל'}
+              </button>
+            )}
             <button
               onClick={() => { setSelectMode(p => !p); setSelectedIds(new Set()); }}
               style={{
@@ -541,7 +562,9 @@ export default function DashboardPage() {
         )}
 
         <div className="task-grid" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {filteredTasks.length === 0 ? (
+        {tasksLoading ? (
+          [1,2,3].map(i => <TaskSkeleton key={i} />)
+        ) : filteredTasks.length === 0 ? (
           <div style={{
             textAlign: 'center', padding: '40px 20px',
             color: 'var(--color-text-muted)', fontSize: 'var(--text-body)',
@@ -754,6 +777,37 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Task Skeleton ────────────────────────────────────────────────
+function TaskSkeleton() {
+  return (
+    <div style={{
+      background: 'var(--color-surface)', borderRadius: 'var(--radius-card)',
+      border: '1px solid var(--color-border)', padding: '14px 16px',
+    }}>
+      <style>{`
+        @keyframes shimmer {
+          0%   { background-position: -400px 0; }
+          100% { background-position:  400px 0; }
+        }
+        .skeleton-line {
+          border-radius: 6px;
+          background: linear-gradient(90deg, var(--color-surface-alt) 25%, var(--color-border) 50%, var(--color-surface-alt) 75%);
+          background-size: 800px 100%;
+          animation: shimmer 1.4s ease infinite;
+        }
+      `}</style>
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div className="skeleton-line" style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0 }} />
+        <div className="skeleton-line" style={{ flex: 1, height: 16 }} />
+        <div className="skeleton-line" style={{ width: 60, height: 16 }} />
+      </div>
+      <div style={{ display: 'flex', gap: '8px', marginTop: '10px', paddingRight: '30px' }}>
+        <div className="skeleton-line" style={{ width: 70, height: 12 }} />
+      </div>
     </div>
   );
 }
