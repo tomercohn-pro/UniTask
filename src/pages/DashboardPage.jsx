@@ -53,6 +53,7 @@ export default function DashboardPage() {
   const [editDueDate, setEditDueDate] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState('');
+  const [syncToast, setSyncToast] = useState(null); // { message, success }
   const [showAddForm, setShowAddForm] = useState(false);
 
   const fetchTasks = useCallback(async () => {
@@ -95,30 +96,35 @@ export default function DashboardPage() {
     // אקראי: 30% סיכוי לאין מטלות חדשות, 70% סיכוי ל-1–5 מטלות
     const newTaskCount = Math.random() < 0.3 ? 0 : Math.floor(Math.random() * 5) + 1;
 
+    const showToast = (message, success = true) => {
+      setSyncToast({ message, success });
+      setTimeout(() => setSyncToast(null), 3500);
+    };
+
     if (newTaskCount === 0) {
-      setSyncStatus('✓ אין מטלות חדשות ב-Moodle');
       setIsSyncing(false);
-      setTimeout(() => setSyncStatus(''), 3500);
+      setSyncStatus('');
+      showToast('אין מטלות חדשות ב-Moodle', true);
       return;
     }
 
-    const { courseNames, taskRows, degreeLabel } = getMockSyncData(degreeKey, newTaskCount);
+    const { courseNames, taskRows } = getMockSyncData(degreeKey, newTaskCount);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
       if (!userId) { setSyncStatus('שגיאה: לא מחובר.'); setIsSyncing(false); return; }
       await supabase.from('courses').insert(courseNames.map(name => ({ name, user_id: userId })));
       const { error: tasksError } = await supabase.from('tasks').insert(taskRows.map(t => ({ ...t, user_id: userId })));
-      if (tasksError) { setSyncStatus('שגיאה בסנכרון.'); }
+      if (tasksError) { showToast('שגיאה בסנכרון', false); }
       else {
         await fetchTasks();
-        setSyncStatus(`✓ נוספו ${newTaskCount} מטלות חדשות`);
+        showToast(`נוספו ${newTaskCount} מטלות חדשות 🎉`, true);
       }
     } catch (e) {
-      setSyncStatus('שגיאה בסנכרון.');
+      showToast('שגיאה בסנכרון', false);
     } finally {
       setIsSyncing(false);
-      setTimeout(() => setSyncStatus(''), 3500);
+      setSyncStatus('');
     }
   }
 
@@ -212,6 +218,14 @@ export default function DashboardPage() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeSlideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes toastSlideUp {
+          from { opacity: 0; transform: translateX(-50%) translateY(24px); }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        @keyframes toastFadeOut {
+          from { opacity: 1; }
+          to   { opacity: 0; }
+        }
         @media (max-width: 767px) {
           .dash-root { padding-bottom: 100px !important; }
         }
@@ -367,21 +381,6 @@ export default function DashboardPage() {
           }
         </button>
       </div>
-
-      {/* ── Sync Result Toast ── */}
-      {!isSyncing && syncStatus && (
-        <div className="dash-section" style={{ padding: '8px 20px 0' }}>
-          <p style={{
-            fontSize: 'var(--text-caption)',
-            color: syncStatus.startsWith('✓') ? 'var(--color-success)' : 'var(--color-error)',
-            fontWeight: 'var(--weight-medium)',
-            textAlign: 'center',
-            animation: 'fadeSlideIn 0.2s ease',
-          }}>
-            {syncStatus}
-          </p>
-        </div>
-      )}
 
       {/* ── Filter Tabs ── */}
       <div className="dash-section" style={{ padding: '16px 20px 0' }}>
@@ -553,6 +552,33 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* ── Sync Toast ── */}
+      {syncToast && (
+        <div style={{
+          position: 'fixed',
+          bottom: '90px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 2000,
+          animation: 'toastSlideUp 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards',
+          pointerEvents: 'none',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '14px 22px',
+            borderRadius: 'var(--radius-pill)',
+            background: syncToast.success ? 'var(--color-success)' : 'var(--color-error)',
+            color: '#fff',
+            fontWeight: 'var(--weight-semibold)',
+            fontSize: 'var(--text-body)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
+            whiteSpace: 'nowrap',
+          }}>
+            {syncToast.success ? '✓' : '✕'} {syncToast.message}
+          </div>
+        </div>
+      )}
 
       {/* ── Info Dialog ── */}
       {(showInfo || isInfoClosing) && (
