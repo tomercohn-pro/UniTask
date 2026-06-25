@@ -1,16 +1,98 @@
-# React + Vite
+# UniTask — ניהול מטלות חכם לסטודנטים
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-unitask--delta.vercel.app-4F46E5?style=for-the-badge&logo=vercel)](https://unitask-delta.vercel.app)
+[![GitHub](https://img.shields.io/badge/GitHub-tomercohn--pro%2FUniTask-181717?style=for-the-badge&logo=github)](https://github.com/tomercohn-pro/UniTask)
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🔗 קישורים
 
-## React Compiler
+| | קישור |
+|---|---|
+| 🌐 אפליקציה חיה | [unitask-delta.vercel.app](https://unitask-delta.vercel.app) |
+| 💻 קוד מקור | [github.com/tomercohn-pro/UniTask](https://github.com/tomercohn-pro/UniTask) |
+| 🗄️ בסיס נתונים | Supabase (PostgreSQL) |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 📋 על הפרויקט
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+UniTask היא אפליקציית ניהול מטלות לסטודנטים, עם סנכרון מדומה ל-Moodle, סורק מסמכים חכם, וממשק RTL עברי מלא.
+
+### תכונות עיקריות
+
+- **דשבורד מטלות** — הוספה, עריכה, מחיקה ושחזור מטלות
+- **סנכרון Moodle** — שאיבת מטלות אוטומטית לפי התואר שהגדרת
+- **סורק AI** — העלאת קובץ PDF/Word לזיהוי מטלות ותאריכים אוטומטי
+- **ניהול קורסים** — סילבוס וניהול קורסים
+- **כניסה עם Google** — אימות מאובטח דרך Supabase Auth
+- **עיצוב רספונסיבי** — Sidebar בדסקטופ, Bottom Nav במובייל
+- **מצב כהה** — תמיכה מלאה ב-Dark Mode
+
+---
+
+## 🛠️ טכנולוגיות
+
+| טכנולוגיה | שימוש |
+|---|---|
+| React 19 + Vite | Frontend |
+| React Router v7 | ניתוב |
+| Supabase | Auth + PostgreSQL + RLS |
+| Lucide React | אייקונים |
+| Vercel | Hosting |
+
+---
+
+## 🚀 התקנה והרצה מקומית
+
+```bash
+# שכפול הפרויקט
+git clone https://github.com/tomercohn-pro/UniTask.git
+cd UniTask
+
+# התקנת dependencies
+npm install
+
+# הגדרת משתני סביבה
+cp .env.example .env
+# ערוך את .env עם פרטי Supabase שלך
+
+# הרצה מקומית
+npm run dev
+```
+
+### משתני סביבה נדרשים (`.env`)
+
+```
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+---
+
+## 📁 מבנה הפרויקט
+
+```
+src/
+├── components/
+│   ├── Sidebar.jsx        # ניווט דסקטופ
+│   └── BottomNav.jsx      # ניווט מובייל
+├── pages/
+│   ├── DashboardPage.jsx  # דשבורד מטלות
+│   ├── CoursesPage.jsx    # ניהול קורסים
+│   ├── ScannerPage.jsx    # סורק AI
+│   ├── SettingsPage.jsx   # הגדרות
+│   ├── OnboardingPage.jsx # הגדרת פרופיל
+│   └── LoginPage.jsx      # כניסה
+├── data/
+│   └── mockDegreeData.js  # נתוני תארים ומטלות
+├── styles/
+│   └── globals.css        # Design tokens + Layout
+└── supabaseClient.js      # חיבור Supabase
+```
+
+---
+
+## 👤 מפתח
+
+**Tomer Cohen** — [tomercohn-pro](https://github.com/tomercohn-pro)
