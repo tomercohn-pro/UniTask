@@ -1,6 +1,9 @@
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js';
 
 export default function LoginPage() {
+  const navigate = useNavigate();
+
   const handleGoogleLogin = async () => {
     try {
       await supabase.auth.signInWithOAuth({
@@ -10,6 +13,11 @@ export default function LoginPage() {
     } catch (error) {
       console.error('Login failed:', error);
     }
+  };
+
+  const handleGuest = () => {
+    localStorage.setItem('guestMode', 'true');
+    navigate('/');
   };
 
   return (
@@ -106,8 +114,23 @@ export default function LoginPage() {
         </button>
       </div>
 
+      <button
+        onClick={handleGuest}
+        style={{
+          marginTop: '16px',
+          background: 'none', border: 'none',
+          color: 'var(--color-text-muted)',
+          fontSize: 'var(--text-caption)',
+          cursor: 'pointer',
+          textDecoration: 'underline',
+          textUnderlineOffset: '3px',
+        }}
+      >
+        דלג — צפה בלי להתחבר
+      </button>
+
       <p style={{
-        marginTop: '24px',
+        marginTop: '16px',
         color: 'var(--color-text-subtle)',
         fontSize: 'var(--text-xs)',
         textAlign: 'center',

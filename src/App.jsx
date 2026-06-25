@@ -16,6 +16,10 @@ function AppRoutes() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       const path = window.location.pathname;
+      const isGuest = localStorage.getItem('guestMode') === 'true';
+      if (!session?.user && path !== '/login' && !isGuest) {
+        navigate('/login');
+      }
       if (session?.user && path === '/') {
         if (!localStorage.getItem('userDegree')) navigate('/onboarding');
       }
@@ -23,9 +27,11 @@ function AppRoutes() {
 
     const { data: listener } = supabase.auth.onAuthStateChange((_, session) => {
       const path = window.location.pathname;
-      if (!session?.user && path !== '/login') {
+      const isGuest = localStorage.getItem('guestMode') === 'true';
+      if (!session?.user && path !== '/login' && !isGuest) {
         navigate('/login');
       } else if (session?.user && path === '/login') {
+        localStorage.removeItem('guestMode');
         navigate(localStorage.getItem('userDegree') ? '/' : '/onboarding');
       }
     });

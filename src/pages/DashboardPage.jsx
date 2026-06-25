@@ -14,6 +14,14 @@ function getGreeting() {
 const TASKS_KEY = 'dashboardTasks';
 const DELETED_KEY = 'dashboardDeletedTasks';
 
+const GUEST_TASKS = [
+  { id: 'g1', title: 'פרויקט SQL: בניית מסד נתונים לניהול לקוחות', due_date: new Date(Date.now() + 2 * 86400000).toISOString().slice(0,10), is_urgent: true,  is_completed: false },
+  { id: 'g2', title: 'מצגת BI: דשבורד ניהולי ב-Power BI',           due_date: new Date(Date.now() + 5 * 86400000).toISOString().slice(0,10), is_urgent: false, is_completed: false },
+  { id: 'g3', title: 'עבודה: מדיניות אבטחת מידע לארגון בינוני',     due_date: new Date(Date.now() + 9 * 86400000).toISOString().slice(0,10), is_urgent: false, is_completed: false },
+  { id: 'g4', title: 'בחינה: ניתוח ועיצוב מערכות מידע',              due_date: new Date(Date.now() - 1 * 86400000).toISOString().slice(0,10), is_urgent: true,  is_completed: false },
+  { id: 'g5', title: 'תרגיל: ניתוח נתונים ב-Excel מתקדם',           due_date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0,10), is_urgent: false, is_completed: true  },
+];
+
 function loadLS(key) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; }
   catch { return null; }
@@ -33,7 +41,8 @@ function formatDate(d) {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const [tasks, setTasks] = useState(() => loadLS(TASKS_KEY) ?? []);
+  const isGuest = !localStorage.getItem('supabase.auth.token') && localStorage.getItem('guestMode') === 'true';
+  const [tasks, setTasks] = useState(() => isGuest ? GUEST_TASKS : (loadLS(TASKS_KEY) ?? []));
   const [deletedTasks, setDeletedTasks] = useState(() => loadLS(DELETED_KEY) ?? []);
   const [showDeletedTasks, setShowDeletedTasks] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -61,6 +70,7 @@ export default function DashboardPage() {
   const autoUrgentProcessed = useRef(new Set());
 
   const fetchTasks = useCallback(async () => {
+    if (isGuest) { setTasksLoading(false); return; }
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
     if (!userId) { setTasksLoading(false); return; }
@@ -68,7 +78,7 @@ export default function DashboardPage() {
     if (error) console.error('שגיאה בשליפת מטלות:', error);
     else setTasks(data);
     setTasksLoading(false);
-  }, []);
+  }, [isGuest]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
   useEffect(() => {
@@ -288,6 +298,36 @@ export default function DashboardPage() {
           .dash-root { padding-bottom: 100px !important; }
         }
       `}</style>
+
+      {/* ── Guest Banner ── */}
+      {isGuest && (
+        <div style={{
+          background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
+          color: '#fff',
+          padding: '12px 20px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: '12px', flexWrap: 'wrap',
+        }}>
+          <span style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
+            👁 מצב תצוגה — הנתונים הם לדוגמה בלבד
+          </span>
+          <button
+            onClick={() => {
+              localStorage.removeItem('guestMode');
+              navigate('/login');
+            }}
+            style={{
+              padding: '7px 16px', border: '2px solid rgba(255,255,255,0.7)',
+              borderRadius: 'var(--radius-pill)',
+              background: 'transparent', color: '#fff',
+              fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-caption)',
+              cursor: 'pointer', whiteSpace: 'nowrap',
+            }}
+          >
+            התחבר עם Google →
+          </button>
+        </div>
+      )}
 
       {/* ── Header ── */}
       <div className="dash-header" style={{
